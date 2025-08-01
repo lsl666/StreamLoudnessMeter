@@ -1,0 +1,3 @@
+[submodule "thirdparty/libebur128"]
+	path = thirdparty/libebur128
+	url = git@github.com:jiixyj/libebur128.git
