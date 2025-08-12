@@ -16,7 +16,7 @@ Since this package is not yet published to PyPI, you need to install it from sou
 git clone --recursive git@github.com:lsl666/StreamLoudnessMeter.git
 cd StreamLoudnessMeter
 ```
-(This repository contains submodule. If you obtain the code through download on websit, please confirm that the submodule has also been successfully downloaded recursively.)
+(This repository contains submodule. If you obtain the code through download on website, please **confirm that the submodule (the contents under `StreamLoudnessMeter/thirdparty`) has also been successfully downloaded recursively**.)
 
 2. **Install the package:**
 ```bash
@@ -96,7 +96,7 @@ print(f"Short-term Loudness: {shortterm_loudness:.2f} LUFS")
 Modes can be combined using the bitwise OR operator (`|`).
 
 ## Installation Issues
-If the installation fails, please make sure all third-party libraries have been downloaded recursively, and verify that the contents under `StreamLoudnessMeter/thirdparty` are complete.
+**If the installation fails**, please make sure all third-party libraries have been downloaded recursively, and **verify that the contents under `StreamLoudnessMeter/thirdparty` are complete.**
 
 ## Contributing
 
