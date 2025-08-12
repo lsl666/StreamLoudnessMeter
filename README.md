@@ -16,7 +16,7 @@ Since this package is not yet published to PyPI, you need to install it from sou
 git clone --recursive https://github.com/lsl666/StreamLoudnessMeter.git
 cd StreamLoudnessMeter
 ```
-(This repository contains submodule. If you obtain the code through download, please confirm that the submodule has also been successfully downloaded.)
+(This repository contains submodule. If you obtain the code through download, please confirm that the submodule has also been successfully downloaded recursive.)
 
 2. **Install the package:**
 ```bash
