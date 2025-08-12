@@ -3,7 +3,9 @@ import numpy as np
 import soundfile as sf
 import os
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+# If you have installed the lib, you do NOT need to add the parent directory to the path
+# sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+
 from stream_loudness_meter import Ebur128, Ebur128Mode
 
 
@@ -19,7 +21,7 @@ def main():
     num_frames = data.shape[0]
     for i in range(0, num_frames, FRAME_SIZE):
         frames = data[i:i + FRAME_SIZE]
-        # 展平成一维交错数组
+        # Flatten to 1D interleaved array
         frames_interleaved = frames.flatten()
         ebur.add_frames_float(frames_interleaved)
     print('Global loudness (LUFS):', ebur.loudness_global())

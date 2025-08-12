@@ -2,6 +2,9 @@
 
 A Python library for measuring audio loudness using the EBU R128 standard.
 
+This library supports streaming loudness measurement. 
+You do not need to feed the entire file at once. You can feed audio frame by frame (streaming style) and configure different loudness modes to obtain various loudness information at any time.
+
 ## Installation
 
 ### From Source (GitHub)
