@@ -1,13 +1,57 @@
 import os
 import ctypes
+import platform
+import importlib.resources as resources
 from ctypes import c_int, c_uint, c_ulong, c_double, c_void_p, POINTER, c_float, c_size_t
 import numpy as np
 from enum import IntFlag
 
-# Default dynamic library path
-DEFAULT_LIB_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)),
-    'thirdparty', 'libebur128', 'cmake-build-release', 'libebur128.1.2.6.dylib')
+def get_lib_path():
+    """Return the path to the ebur128 library."""
+    system = platform.system()
+    if system == 'Darwin':
+        lib_ext = '.dylib'
+    elif system == 'Linux':
+        lib_ext = '.so'
+    elif system == 'Windows':
+        lib_ext = '.dll'
+    else:
+        raise RuntimeError(f'Unsupported platform: {system}')
+
+    lib_name = f'libebur128{lib_ext}'
+    lib_path = None
+
+    # First, try to find the library in the package's libs directory
+    try:
+        with resources.files(__package__).joinpath('libs') as lib_dir:
+            candidate = lib_dir / lib_name
+            if candidate.exists():
+                lib_path = str(candidate)
+    except (ImportError, FileNotFoundError, ModuleNotFoundError):
+        # Fallback for development/editable installs
+        current_file_dir = os.path.dirname(os.path.abspath(__file__))
+        package_lib_path = os.path.join(current_file_dir, 'libs', lib_name)
+        if os.path.exists(package_lib_path):
+            lib_path = package_lib_path
+        else:
+            # Try to find it in the thirdparty build directory (for development)
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_file_dir)))
+            build_lib_path = os.path.join(project_root, 'thirdparty', 'libebur128', 
+                                         'cmake-build-release', lib_name)
+            if os.path.exists(build_lib_path):
+                lib_path = build_lib_path
+
+    # Fall back to environment variable if provided
+    if lib_path is None:
+        lib_path = os.environ.get('EBUR128_LIB_PATH')
+
+    if lib_path is None:
+        raise FileNotFoundError(
+            f'Could not find {lib_name} library. '
+            'Please build it in thirdparty/libebur128/cmake-build-release/ '
+            'or copy it to src/stream_loudness_meter/libs/'
+        )
+    return lib_path
 
 class Ebur128Mode(IntFlag):
     """EBU R128 processing modes, matching the C enum."""
@@ -31,7 +75,7 @@ class Ebur128:
     def __init__(self, channels, samplerate, mode, lib_path=None):
         self.channels = channels
         if lib_path is None:
-            lib_path = os.environ.get('EBUR128_LIB_PATH', DEFAULT_LIB_PATH)
+            lib_path = get_lib_path()
         self.lib = ctypes.CDLL(lib_path)
         self._setup_functions()
         self.state = self.lib.ebur128_init(c_uint(channels), c_ulong(samplerate), c_int(mode))
@@ -43,7 +87,7 @@ class Ebur128:
         self.lib.ebur128_init.argtypes = [c_uint, c_ulong, c_int]
 
         self.lib.ebur128_destroy.restype = None
-        self.lib.ebur128_destroy.argtypes = [c_void_p]
+        self.lib.ebur128_destroy.argtypes = [POINTER(c_void_p)]
 
         self.lib.ebur128_add_frames_float.restype = c_int
         self.lib.ebur128_add_frames_float.argtypes = [c_void_p, POINTER(c_float), c_size_t]
@@ -86,9 +130,20 @@ class Ebur128:
             raise Ebur128Error('ebur128_loudness_shortterm failed')
         return out.value
 
+    def destroy(self):
+        """Explicitly destroy the ebur128 state."""
+        if hasattr(self, 'state') and self.state:
+            # ebur128_destroy expects a double pointer (ebur128_state**)
+            state_ptr = c_void_p(self.state)
+            self.lib.ebur128_destroy(ctypes.byref(state_ptr))
+            self.state = None
+    
     def __del__(self):
+        """Clean up resources when object is garbage collected."""
         try:
-            if hasattr(self, 'state') and self.state:
-                self.lib.ebur128_destroy(self.state)
+            self.destroy()
         except Exception as e:
-            print("Failed to destroy ebur128_state: %s" % e)
+            # Log the error but don't raise - destructors should not raise
+            import sys
+            if hasattr(sys, 'stderr'):
+                sys.stderr.write(f"Warning: Failed to destroy ebur128_state: {e}\n")

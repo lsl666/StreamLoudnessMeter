@@ -3,8 +3,8 @@ import numpy as np
 import soundfile as sf
 import os
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'core'))
-from ebur128 import Ebur128, Ebur128Mode
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+from stream_loudness_meter import Ebur128, Ebur128Mode
 
 # 配置参数
 AUDIO_PATH = os.path.expanduser('~/Downloads/testwav/Hotel California-Eagles.wav')  # 修改为你自己的音频路径
