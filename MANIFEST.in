@@ -1,0 +1,2 @@
+include README.md
+recursive-include thirdparty/libebur128 *.c *.h *.cmake CMakeLists.txt
