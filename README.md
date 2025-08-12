@@ -95,3 +95,40 @@ print(f"Short-term Loudness: {shortterm_loudness:.2f} LUFS")
 
 Modes can be combined using the bitwise OR operator (`|`).
 
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+### Third-Party Licenses
+
+
+For more details about third-party licenses, see the [NOTICE](NOTICE) file.
+
+## Author
+
+**lsl666** - [GitHub](https://github.com/lsl666)
+
+## Acknowledgments
+
+- Thanks to Jan Kokemüller for creating the excellent libebur128 library
+- EBU for the R128 loudness standard specification
+---
+
+Copyright 2024 lsl666
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
