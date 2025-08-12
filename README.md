@@ -43,6 +43,10 @@ pip install dist/*.whl
 - C compiler (gcc/clang on Linux/macOS, MSVC on Windows)
 - NumPy
 
+### Example
+
+For an example of processing WAV and get loudness, see the `example/wav_loudness_example.py` file.
+
 ## Usage
 
 After installation, you can import and use the library:
@@ -91,6 +95,3 @@ print(f"Short-term Loudness: {shortterm_loudness:.2f} LUFS")
 
 Modes can be combined using the bitwise OR operator (`|`).
 
-### Processing Audio Files
-
-For a complete example of processing WAV files, see the `example/wav_loudness_example.py` file.
