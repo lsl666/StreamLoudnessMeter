@@ -95,6 +95,9 @@ print(f"Short-term Loudness: {shortterm_loudness:.2f} LUFS")
 
 Modes can be combined using the bitwise OR operator (`|`).
 
+## Installation Issues
+If the installation fails, please make sure all third-party libraries have been downloaded recursively, and verify that the contents under `StreamLoudnessMeter/thirdparty` are complete.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
