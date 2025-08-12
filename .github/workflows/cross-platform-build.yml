@@ -1,0 +1,395 @@
+name: Cross-Platform Build Verification
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:
+
+jobs:
+  # Linux builds with both GCC and Clang
+  linux-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler: [gcc, clang]
+        python-version: ['3.8', '3.10', '3.12']
+    
+    name: Linux - ${{ matrix.compiler }} - Python ${{ matrix.python-version }}
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build
+        if [ "${{ matrix.compiler }}" = "clang" ]; then
+          sudo apt-get install -y clang
+        fi
+    
+    - name: Set compiler
+      run: |
+        if [ "${{ matrix.compiler }}" = "clang" ]; then
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+        else
+          echo "CC=gcc" >> $GITHUB_ENV
+          echo "CXX=g++" >> $GITHUB_ENV
+        fi
+    
+    - name: Display compiler info
+      run: |
+        echo "Using compiler: $CC"
+        $CC --version
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install numpy pytest scikit-build-core cmake ninja
+    
+    - name: Build library with build_lib.py
+      run: |
+        python build_lib.py
+    
+    - name: Verify library was built
+      run: |
+        ls -la src/stream_loudness_meter/libs/
+        file src/stream_loudness_meter/libs/libebur128.so
+        ldd src/stream_loudness_meter/libs/libebur128.so || true
+    
+    - name: Test Python bindings
+      run: |
+        python -c "import sys; sys.path.insert(0, 'src'); from stream_loudness_meter import Ebur128, Ebur128Mode; print('Import successful')"
+        python test_wheel_installation.py
+    
+    - name: Build wheel
+      run: |
+        pip install build
+        python -m build --wheel
+    
+    - name: Test wheel installation
+      run: |
+        # Create a virtual environment for testing
+        python -m venv test_env
+        source test_env/bin/activate
+        pip install dist/*.whl
+        # Test import in clean environment
+        cd /tmp
+        python -c "from stream_loudness_meter import Ebur128, Ebur128Mode; print('Wheel import successful')"
+        # Run example if it exists
+        if [ -f "${{ github.workspace }}/example/wav_loudness_example.py" ]; then
+          cd "${{ github.workspace }}"
+          python example/wav_loudness_example.py || echo "Example requires WAV file"
+        fi
+    
+    - name: Upload wheel artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: wheel-linux-${{ matrix.compiler }}-py${{ matrix.python-version }}
+        path: dist/*.whl
+
+  # macOS build with Clang (default compiler)
+  macos-build:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.10', '3.12']
+    
+    name: macOS - Clang - Python ${{ matrix.python-version }}
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        brew install cmake ninja
+    
+    - name: Display compiler info
+      run: |
+        echo "Using compiler: $(which clang)"
+        clang --version
+        cmake --version
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install numpy pytest scikit-build-core cmake ninja
+    
+    - name: Build library with build_lib.py
+      run: |
+        python build_lib.py
+    
+    - name: Verify library was built
+      run: |
+        ls -la src/stream_loudness_meter/libs/
+        file src/stream_loudness_meter/libs/libebur128.dylib
+        otool -L src/stream_loudness_meter/libs/libebur128.dylib || true
+    
+    - name: Test Python bindings
+      run: |
+        python -c "import sys; sys.path.insert(0, 'src'); from stream_loudness_meter import Ebur128, Ebur128Mode; print('Import successful')"
+        python test_wheel_installation.py
+    
+    - name: Build wheel
+      run: |
+        pip install build
+        python -m build --wheel
+    
+    - name: Test wheel installation
+      run: |
+        # Create a virtual environment for testing
+        python -m venv test_env
+        source test_env/bin/activate
+        pip install dist/*.whl
+        # Test import in clean environment
+        cd /tmp
+        python -c "from stream_loudness_meter import Ebur128, Ebur128Mode; print('Wheel import successful')"
+        # Run example if it exists
+        if [ -f "${{ github.workspace }}/example/wav_loudness_example.py" ]; then
+          cd "${{ github.workspace }}"
+          python example/wav_loudness_example.py || echo "Example requires WAV file"
+        fi
+    
+    - name: Upload wheel artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: wheel-macos-py${{ matrix.python-version }}
+        path: dist/*.whl
+
+  # Windows build with MSVC
+  windows-build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.10', '3.12']
+    
+    name: Windows - MSVC - Python ${{ matrix.python-version }}
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Set up MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+    
+    - name: Display compiler info
+      run: |
+        cl
+        cmake --version
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install numpy pytest scikit-build-core cmake
+    
+    - name: Build library with build_lib.py
+      run: |
+        python build_lib.py
+    
+    - name: Verify library was built
+      shell: powershell
+      run: |
+        Get-ChildItem -Path src\stream_loudness_meter\libs\
+        # Check if DLL exists
+        $dllPath = "src\stream_loudness_meter\libs\libebur128.dll"
+        if (Test-Path $dllPath) {
+          Write-Host "DLL found at: $dllPath"
+          # Display DLL dependencies
+          dumpbin /dependents $dllPath 2>$null || Write-Host "dumpbin not available"
+        } else {
+          Write-Host "ERROR: DLL not found at expected location"
+          exit 1
+        }
+    
+    - name: Test Python bindings
+      shell: cmd
+      run: |
+        python -c "import sys; sys.path.insert(0, 'src'); from stream_loudness_meter import Ebur128, Ebur128Mode; print('Import successful')"
+        python test_wheel_installation.py
+    
+    - name: Verify DLL loading mechanism
+      shell: python
+      run: |
+        import os
+        import sys
+        import ctypes
+        import platform
+        
+        # Add src to path
+        sys.path.insert(0, 'src')
+        
+        # Test that ctypes can find the DLL in the same directory
+        from stream_loudness_meter.ebur128 import get_lib_path
+        
+        lib_path = get_lib_path()
+        print(f"Library path: {lib_path}")
+        print(f"Library exists: {os.path.exists(lib_path)}")
+        
+        # Try to load the library
+        try:
+            lib = ctypes.CDLL(lib_path)
+            print("Successfully loaded library with ctypes")
+        except Exception as e:
+            print(f"Failed to load library: {e}")
+            sys.exit(1)
+    
+    - name: Build wheel
+      run: |
+        pip install build
+        python -m build --wheel
+    
+    - name: Test wheel installation
+      shell: cmd
+      run: |
+        :: Create a virtual environment for testing
+        python -m venv test_env
+        call test_env\Scripts\activate.bat
+        pip install dist\*.whl
+        :: Test import in clean environment
+        cd %TEMP%
+        python -c "from stream_loudness_meter import Ebur128, Ebur128Mode; print('Wheel import successful')"
+        :: Run example if it exists
+        if exist "%GITHUB_WORKSPACE%\example\wav_loudness_example.py" (
+          cd /d "%GITHUB_WORKSPACE%"
+          python example\wav_loudness_example.py || echo Example requires WAV file
+        )
+    
+    - name: Verify wheel contents
+      shell: powershell
+      run: |
+        # Extract and check wheel contents
+        $wheel = Get-ChildItem dist\*.whl | Select-Object -First 1
+        Write-Host "Checking wheel: $($wheel.Name)"
+        
+        # Create temp directory
+        $tempDir = New-Item -ItemType Directory -Path "$env:TEMP\wheel_check" -Force
+        
+        # Extract wheel (it's a zip file)
+        Expand-Archive -Path $wheel.FullName -DestinationPath $tempDir -Force
+        
+        # Check for DLL in the wheel
+        $dlls = Get-ChildItem -Path $tempDir -Filter "*.dll" -Recurse
+        if ($dlls) {
+          Write-Host "Found DLLs in wheel:"
+          $dlls | ForEach-Object { Write-Host "  - $($_.FullName)" }
+        } else {
+          Write-Host "WARNING: No DLLs found in wheel!"
+        }
+        
+        # Clean up
+        Remove-Item -Path $tempDir -Recurse -Force
+    
+    - name: Upload wheel artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: wheel-windows-py${{ matrix.python-version }}
+        path: dist/*.whl
+
+  # Test cross-platform wheel compatibility
+  test-wheels:
+    needs: [linux-build, macos-build, windows-build]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.10']
+    
+    name: Test Wheels - ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Download all wheels
+      uses: actions/download-artifact@v3
+      with:
+        path: downloaded_wheels
+    
+    - name: List downloaded wheels
+      run: |
+        ls -R downloaded_wheels/ || dir /s downloaded_wheels\
+    
+    - name: Install and test appropriate wheel
+      shell: bash
+      run: |
+        # Determine the appropriate wheel for this platform
+        if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+          WHEEL_PATTERN="wheel-linux-gcc-py3.10"
+        elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+          WHEEL_PATTERN="wheel-macos-py3.10"
+        else
+          WHEEL_PATTERN="wheel-windows-py3.10"
+        fi
+        
+        # Find and install the wheel
+        WHEEL=$(find downloaded_wheels -name "*.whl" -path "*${WHEEL_PATTERN}*" | head -1)
+        
+        if [ -z "$WHEEL" ]; then
+          echo "No matching wheel found for pattern: ${WHEEL_PATTERN}"
+          exit 1
+        fi
+        
+        echo "Installing wheel: $WHEEL"
+        pip install "$WHEEL"
+        
+        # Test the installation
+        python -c "from stream_loudness_meter import Ebur128, Ebur128Mode; print('Import test passed')"
+        
+        # Run a basic functional test
+        python -c "
+import numpy as np
+from stream_loudness_meter import Ebur128, Ebur128Mode
+
+# Create a test signal
+sample_rate = 48000
+duration = 1.0
+channels = 2
+samples = int(sample_rate * duration)
+
+# Generate a simple sine wave
+t = np.linspace(0, duration, samples)
+frequency = 440.0  # A4 note
+signal = np.sin(2 * np.pi * frequency * t) * 0.5
+
+# Create stereo signal
+stereo_signal = np.column_stack([signal, signal]).flatten()
+
+# Initialize meter
+meter = Ebur128(channels, sample_rate, Ebur128Mode.EBUR128_MODE_I)
+
+# Process frames
+meter.add_frames_float(stereo_signal)
+
+# Get loudness
+loudness = meter.loudness_global()
+print(f'Loudness: {loudness:.2f} LUFS')
+print('Functional test passed!')
+"
