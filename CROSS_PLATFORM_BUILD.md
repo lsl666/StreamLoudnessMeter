@@ -43,7 +43,7 @@ brew install cmake ninja
 ### Quick Build
 ```bash
 # Clone repository with submodules
-git clone --recursive https://github.com/yourusername/StreamLoudnessMeter.git
+git clone --recursive https://github.com/lsl666/StreamLoudnessMeter.git
 cd StreamLoudnessMeter
 
 # Build the library
